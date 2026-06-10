@@ -1,102 +1,133 @@
-# NetBird Monitoring Stack — Self-Hosted Observability
+# NetBird Monitoring Stack
 
-## 問題
-Datadog $15/host/month，5台主機一年 $900+，還不算 logs / APM。
-自架 Prometheus + Grafana + Loki，一台 $5-10/month VPS 搞定。
+> **Self-hosted Prometheus + Grafana + Loki + Alertmanager.**  
+> One `docker-compose up`, 7 containers, Zero Trust VPN access via NetBird.  
+> Replaces Datadog at **$5-10/month VPS cost** instead of $15/host/month.
 
-## 目標結果
+[![GitHub](https://img.shields.io/badge/github-source-blue?logo=github)](https://github.com/end8cl01g/netbird-monitoring-stack)
+[![Status](https://img.shields.io/badge/status-production%20ready-green)]()
+[![License](https://img.shields.io/badge/license-MIT-blue)]()
+
+## Demo
 
 ```
-Remote Peer ──► NetBird Mesh ──► 100.126.99.53 (Routing Peer)
+$ ./verify-closed-loop.sh
+
+============================================
+  NetBird Monitoring Stack — Verification
+============================================
+
+  PASS [2/8] Prometheus API reachable
+  Active UP targets: 5
+
+  PASS [3/8] Grafana API healthy
+  PASS [4/8] Loki ready
+  PASS [5/8] Promtail collecting logs (129 metrics)
+  PASS [6/8] Alertmanager healthy
+  PASS [7/8] node_exporter metrics flowing
+  PASS [8/8] NetBird route active
+
+  Results: 8/8 passed
+```
+
+## Architecture
+
+```
+Remote Peer ──► NetBird Mesh ──► Routing Peer (100.126.99.53)
                                        │
                               monitoring-net (172.19.0.0/16)
-                              │       │       │       │       │
-                          prometheus  grafana  loki    alert   promtail
-                            :9090      :3000   :3100   :9093    :9080
-                                              │
-                                          node_exporter  cadvisor
-                                           (host metrics) (container metrics)
+                              │       │       │       │
+                          prometheus  grafana  loki   alertmanager
+                            :9090      :3000   :3100    :9093
+                              │         │        │
+                          node_exporter  ─  cadvisor  ─  promtail
+                           (host)         (docker)      (logs)
 ```
 
-閉環：遠端團隊透過 NetBird 存取完整監控棧，無需公開 endpoint。
+**Key difference from other monitoring stacks**: all services are accessible **only via NetBird WireGuard tunnel**. No firewall ports to open, no reverse proxy to configure, no TLS certificates to manage. If you're connected to the NetBird mesh, you have access.
 
----
+## Quick Start
 
-## 角色閉環
-
-### 架構規劃師
-```
-需求分析 → 技術選型 → AGENTS.md → todo.md 任務分解 → 交付工程師
-```
-
-### 程式執行工程師
-```
-AGENTS.md → docker-compose → configs → compose up → verify 腳本
-```
-
-### 收斂點：verify-closed-loop.sh 8 項全 PASS
-
----
-
-## 順向執行步驟
-
-### Phase 1: 專案初始化
 ```bash
-git clone <this-repo> netbird-monitoring-stack
+git clone https://github.com/end8cl01g/netbird-monitoring-stack.git
 cd netbird-monitoring-stack
+
+# Start all 7 containers
+docker compose up -d
+
+# Wait 15s, then verify
+./verify-closed-loop.sh
 ```
 
-### Phase 2: NetBird 網路設定
+Access Grafana at `http://localhost:3000` (admin/admin).
+
+### Optional: NetBird Remote Access
+
 ```bash
 export NETBIRD_TOKEN="nbp_xxx"
 ./configure-monitoring.sh
 ```
-腳本會：
-- 建立 NetBird Network `monitoring-stack`
-- 加入 Resource `172.19.0.0/16`
-- 指派 Routing Peer + masquerade
 
-### Phase 3: Docker 部署
-```bash
-docker compose up -d
-# 等待 15 秒初始化
-```
+This creates a NetBird Network + Resource for `172.19.0.0/16` and assigns your routing peer. After propagation, any connected NetBird peer can access Grafana at `http://172.19.0.3:3000`.
 
-### Phase 4: 驗證
-```bash
-./verify-closed-loop.sh
-# 預期 8/8 PASS
-```
+## Components
 
-### Phase 5: 遠端存取
-從任何 NetBird 連線的 peer：
-```bash
-curl http://172.19.0.3:3000   # Grafana
-curl http://172.19.0.2:9090   # Prometheus
-```
+| Service | IP | Port | Role |
+|---------|-----|------|------|
+| prometheus | 172.19.0.2 | 9090 | Metrics + alerting rules |
+| grafana | 172.19.0.3 | 3000 | Dashboards (pre-loaded datasources) |
+| loki | 172.19.0.4 | 3100 | Log aggregation |
+| promtail | 172.19.0.5 | 9080 | Docker log auto-discovery |
+| alertmanager | 172.19.0.6 | 9093 | Alert routing + dedup |
+| node_exporter | 172.19.0.7 | 9100 | Host metrics (CPU, RAM, disk) |
+| cadvisor | 172.19.0.8 | 8080 | Container metrics |
 
----
+All services pinned to specific versions — no accidental breaking upgrades.
 
-## 組件對照
+## Built-in Alerts
 
-| Service | Container IP | Port | 功能 |
-|---------|-------------|------|------|
-| prometheus | 172.19.0.2 | 9090 | 指標收集 + 告警 |
-| grafana | 172.19.0.3 | 3000 | 儀表板 |
-| loki | 172.19.0.4 | 3100 | 日誌聚合 |
-| promtail | 172.19.0.5 | 9080 | Docker 日誌收集 |
-| alertmanager | 172.19.0.6 | 9093 | 告警路由 |
-| node_exporter | 172.19.0.7 | 9100 | 主機指標 |
-| cadvisor | 172.19.0.8 | 8080 | 容器指標 |
+| Alert | Condition | Severity |
+|-------|-----------|----------|
+| HostHighCPU | CPU > 80% for 5m | warning |
+| HostOutOfMemory | Available RAM < 10% | warning |
+| HostDiskFull | Root disk < 10% free | critical |
+| ContainerDown | Container not seen > 60s | critical |
+| PrometheusTargetMissing | Any scrape target down | critical |
 
-## 安全原則
-1. 全部容器只綁 `monitoring-net`，不開 host port
-2. Grafana 管理員密碼透過 `GRAFANA_PASSWORD` env 設定
-3. 全部流量經 NetBird WireGuard tunnel
-4. Prometheus alerting rules 內建告警
+## Security
 
-## 下一步
-- [ ] Grafana 加入 LDAP/OAuth SSO
-- [ ] 設定 Alertmanager Slack/Telegram 通知
-- [ ] 加入 Thanos 長期儲存（S3 冷資料）
-- [ ] 部署到 Kubernetes via kube-prometheus-stack
+- All services bind to `127.0.0.1` only — no public exposure
+- Grafana admin password via `GRAFANA_PASSWORD` env var
+- All access through NetBird WireGuard tunnel (Zero Trust)
+- Prometheus alerting rules fire on anomalies, not just downtime
+
+## Cost Comparison
+
+| Service | Monthly Cost | Notes |
+|---------|-------------|-------|
+| Datadog | $15/host + $12/host (APM) | 5 hosts = $135/mo |
+| Grafana Cloud | $19 + usage | 10k series cap on free |
+| **This stack** | **$5-10 VPS** | Unlimited hosts, metrics, logs |
+
+## Why NetBird?
+
+[NetBird](https://netbird.io) is an open-source WireGuard-based mesh VPN. Unlike Tailscale (proprietary coordination server) or Headscale (self-hosted but no routing peers), NetBird supports **Network Routing** — making a single peer act as a gateway for an entire subnet. This is what enables remote access to `172.19.0.0/16` without exposing any ports.
+
+## Files
+
+| File | Purpose |
+|------|---------|
+| `docker-compose.yml` | 7 services + monitoring-net (172.19.0.0/16) |
+| `configure-monitoring.sh` | NetBird API setup + deploy + Grafana dashboards |
+| `verify-closed-loop.sh` | 8-item automated verification |
+| `AGENTS.md` | Architecture guide for AI coding agents |
+| `config/prometheus/prometheus.yml` | Scrape configs for all targets |
+| `config/rules/alerts.yml` | 5 alerting rules |
+| `config/grafana/datasources/` | Pre-provisioned Prometheus + Loki datasources |
+| `config/loki/loki.yml` | Log storage config (168h retention) |
+| `config/promtail/promtail.yml` | Docker log auto-discovery via socket |
+| `config/alertmanager/alertmanager.yml` | Webhook routing with dedup |
+
+## License
+
+MIT
