@@ -1,7 +1,7 @@
 # Product Hunt Launch: NetBird Monitoring Stack
 
 ## Tagline
-Self-hosted Prometheus + Grafana + Loki stack. One docker-compose, 7 containers, Zero Trust VPN access.
+Self-hosted monitoring with NetBird VPN. One docker-compose.
 
 ## Description
 
