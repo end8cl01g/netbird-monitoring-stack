@@ -19,6 +19,11 @@ Everything is pinned to specific versions. The verify script gives you confidenc
 ## Launch Tags
 Developer Tools, Open Source, DevOps
 
+## Shoutouts
+- [NetBird](https://www.producthunt.com/posts/netbird) — Zero Trust VPN mesh that makes remote access secure
+- [Prometheus](https://www.producthunt.com/posts/prometheus) — Metrics collection and alerting
+- [Grafana](https://www.producthunt.com/posts/grafana) — Dashboards and visualization
+
 ## Images/GIFs
 [Verification output]
 [Architecture diagram]
