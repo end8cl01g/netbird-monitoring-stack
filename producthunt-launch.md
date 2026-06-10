@@ -5,27 +5,9 @@ Self-hosted monitoring with NetBird VPN. One docker-compose.
 
 ## Description
 
-**Replace Datadog at <10% of the cost.** A self-hosted Prometheus + Grafana + Loki + Alertmanager monitoring stack that deploys in 10 minutes and is accessible from anywhere via NetBird WireGuard mesh — no public ports, no reverse proxy, no TLS management.
+Replace Datadog at <10% the cost. Self-hosted Prometheus + Grafana + Loki + Alertmanager in one docker-compose. Deploys in 10 minutes, accessible via NetBird WireGuard mesh — no public ports, no reverse proxy. 7 containers with pinned versions, pre-configured alerting (CPU, memory, disk, container down), and a verification script. Costs $5-10/month VPS instead of $135+/month. For indie hackers and small teams.
 
-**What makes this different:**
-- 7 containers, pinned versions, one docker-compose up
-- Pre-configured alerting (CPU >80%, memory <10%, disk <10%, container down, target missing)
-- verify-closed-loop.sh — 8 automated checks that confirm everything works
-- NetBird Network Routing — remote team access without exposing endpoints
-- Costs $5-10/month VPS instead of $135+/month for Datadog
-
-**Who it's for:**
-Indie hackers, small dev teams, and anyone tired of SaaS observability pricing. If you can run docker-compose, you can have production-grade monitoring in 10 minutes.
-
-**Stack:**
-- Prometheus (metrics + alerting rules)
-- Grafana (dashboards with pre-loaded datasources)
-- Loki + Promtail (Docker log auto-discovery)
-- Alertmanager (alert dedup + webhook)
-- Node Exporter + cAdvisor (host + container metrics)
-
-**Links:**
-GitHub: https://github.com/end8cl01g/netbird-monitoring-stack
+Links: https://github.com/end8cl01g/netbird-monitoring-stack
 
 ## First Comment
 Built this because I was tired of paying Datadog $135/month for a 5-server setup. The open-source alternatives (Prometheus/Grafana/Loki) are excellent but wiring them up takes hours and the result is often fragile.
