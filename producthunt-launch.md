@@ -16,8 +16,8 @@ The key insight: combine them with NetBird for access control. No nginx reverse 
 
 Everything is pinned to specific versions. The verify script gives you confidence after every change. Fork it, customize it, make it yours.
 
-## Topics
-monitoring, devops, docker, self-hosted, prometheus, grafana, open-source, indie-hacking
+## Launch Tags
+Developer Tools, Open Source, DevOps
 
 ## Images/GIFs
 [Verification output]
