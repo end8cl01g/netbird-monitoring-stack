@@ -1,0 +1,46 @@
+groups:
+  - name: host
+    rules:
+      - alert: HostHighCPU
+        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Host CPU > 80% ({{ $value }}%)"
+
+      - alert: HostOutOfMemory
+        expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes * 100 < 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Host memory < 10% available"
+
+      - alert: HostDiskFull
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 10
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Root disk < 10% free"
+
+  - name: docker
+    rules:
+      - alert: ContainerDown
+        expr: count by(instance) (time() - cadvisor_container_last_seen{container_label_com_docker_compose_project="netbird-monitoring-stack"}) > 60
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Container not seen for > 60s"
+
+  - name: prometheus
+    rules:
+      - alert: PrometheusTargetMissing
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Target {{ $labels.job }}/{{ $labels.instance }} down"
